@@ -4,9 +4,14 @@ const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.static('public'));
 
@@ -52,21 +57,22 @@ io.on('connection', (socket) => {
             if (Object.keys(rooms[roomId].choices).length === 2) {
                 let result = determineWinner(rooms[roomId].choices);
                 io.in(roomId).emit('gameResult', result);
-                delete rooms[roomId];
                 console.log(`Game result for room ${roomId}: ${result}`);
             }
+        }
+    });
+
+    socket.on('restartGame', (roomId) => {
+        if (rooms[roomId]) {
+            rooms[roomId].choices = {};
+            io.in(roomId).emit('gameRestarted');
+            console.log(`Game restarted for room ${roomId}`);
         }
     });
 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
-
-    socket.on('gameResult', (result) => {
-        resultDiv.textContent = result;
-        restartButton.style.display = 'block'; // Menampilkan tombol restart
-    });
-    
 });
 
 const generateRoomId = () => {
@@ -94,5 +100,3 @@ const determineWinner = (choices) => {
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-
-
